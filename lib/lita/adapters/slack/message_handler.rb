@@ -24,6 +24,12 @@ module Lita
             handle_channel_change
           when "error"
             handle_error
+          #CHANGED BY RASHEED
+          when "file_shared"
+            #puts @data
+            handle_file_shared
+          when "user_typing"
+            handle_user_typing
           else
             handle_unknown
           end
@@ -44,7 +50,7 @@ module Lita
          normalized_message = remove_formatting(normalized_message) unless normalized_message.nil?
 
           attachment_text = Array(data["attachments"]).map do |attachment|
-            attachment["text"] || attachment["fallback"]
+            attachment["text"]
           end
 
           ([normalized_message] + attachment_text).compact.join("\n")
@@ -115,7 +121,6 @@ module Lita
           source.private_message! if channel && channel[0] == "D"
           message = Message.new(robot, body, source)
           message.command! if source.private_message?
-          message.extensions[:slack] = { timestamp: data["ts"] }
           log.debug("Dispatching message to Lita from #{user.id}.")
           robot.receive(message)
         end
@@ -169,6 +174,14 @@ module Lita
         def handle_user_change
           log.debug("Updating user data.")
           UserCreator.create_user(SlackUser.from_data(data["user"]), robot, robot_id)
+        end
+
+        def handle_file_shared
+          robot.trigger(:file_shared, payload: data)
+        end
+
+        def handle_user_typing
+          robot.trigger(:user_typing, payload: data)
         end
 
         def log
